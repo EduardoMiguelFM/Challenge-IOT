@@ -44,7 +44,7 @@ MotoPatio/
 1. Acesse o Wokwi e abra o projeto.
 2. Compile o código motopatio_esp32.ino com:
    - Sensor HC-SR04 no GPIOs 13 (TRIG) e 12 (ECHO)
-   - LEDs conectados aos GPIOs 19 a 2 conforme o setor
+   - LEDs conectados aos GPIOs 19 (Setor A), 18 (B), 5 (C), 17 (D), 16 (E), 4 (F) e 2 (G)
 
 📊 Node-RED Dashboard
 1. Acesse seu Node-RED (http://localhost:1880)
