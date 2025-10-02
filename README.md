@@ -12,15 +12,19 @@ O projeto MotoPátio Inteligente foi desenvolvido para resolver o problema de de
 
 🧠 Tecnologias Utilizadas
 
-| Tecnologia       | Finalidade                                          |
-|------------------|-----------------------------------------------------|
-| ESP32            | Microcontrolador principal (Wokwi e físico)         |
-| HC-SR04          | Sensor ultrassônico para detecção no Setor A        |
-| LEDs             | Indicadores de status por setor (7 cores)           |
-| WiFi (ESP32)     | Conectividade para enviar dados MQTT                |
-| MQTT             | Protocolo de comunicação (broker.hivemq.com)        |
-| Node-RED         | Dashboard interativo para visualização dos dados    |
-| Wokwi            | Simulador para testes e prototipagem                |
+| Tecnologia       | Finalidade                                         |
+|-----------------|----------------------------------------------------|
+| ESP32            | Microcontrolador principal (simulado e físico)    |
+| HC-SR04          | Sensor ultrassônico para detecção de motos        |
+| DHT22            | Sensor de temperatura e umidade                   |
+| LEDs             | Indicadores de status por setor                   |
+| WiFi (ESP32)     | Conexão para envio de dados MQTT                  |
+| MQTT             | Protocolo de comunicação entre ESP32 e servidor  |
+| Node.js          | Servidor para receber dados MQTT e atualizar CSV  |
+| Socket.IO        | Atualização do dashboard em tempo real           |
+| HTML/CSS         | Dashboard web interativo                          |
+| CSV              | Armazenamento de histórico em arquivos           |
+| Wokwi            | Simulação do ESP32 e sensores                     |
 
 ---
 
@@ -40,46 +44,52 @@ MotoPatio/
 
 ⚙️ Como Usar
 
-📡 ESP32
-1. Acesse o Wokwi e abra o projeto.
-2. Compile o código motopatio_esp32.ino com:
-   - Sensor HC-SR04 no GPIOs 13 (TRIG) e 12 (ECHO)
-   - LEDs conectados aos GPIOs 19 (Setor A), 18 (B), 5 (C), 17 (D), 16 (E), 4 (F) e 2 (G)
+## ⚙️ Como Usar
 
-📊 Node-RED Dashboard
-1. Acesse seu Node-RED (http://localhost:1880)
-2. Importe o fluxo nodered_fluxo_completo.json
-3. Instale o pacote node-red-dashboard (caso não tenha)
-4. Abra o painel: http://localhost:1880/ui
+### 📡 ESP32
+1. Abra o projeto no Wokwi ou no seu ESP32 físico.
+2. Configure os sensores:
+   - **HC-SR04**:
+     - TRIG A → GPIO 13, ECHO A → GPIO 12  
+     - TRIG B → GPIO 27, ECHO B → GPIO 26
+   - **DHT22** → GPIO 15
+   - **LEDs** → GPIOs: 19 (A), 18 (B), 5 (C), 17 (D), 16 (E), 4 (F), 2 (G)
+3. Compile e faça upload do código `motopatio_esp32.ino`.
 
+### 📡 Servidor Node.js
+1. Abra o terminal na pasta `server/`.
+2. Instale as dependências:
+
+---
+npm init -y
+npm install express socket.io mqtt fs
 ---
 
 🎯 Funcionalidades Atuais
 
-- ✅ Detecção real de motos no Setor A com sensor ultrassônico
-- ✅ Acionamento de LEDs conforme status por setor
+- ✅ Detecção de motos no Setor A com sensor ultrassônico
 - ✅ Simulação dos setores B a G
-- ✅ Publicação MQTT por tópico: patio/setor/X/contagem
-- ✅ Dashboard visual com:
-  - Status textual
-  - Gauge de contagem
-  - Gráfico histórico
+- ✅ Acionamento de LEDs conforme status de cada setor
+- ✅  Publicação MQTT por tópico: patio/setor/X/contagem, patio/ambiente/dht22
+- ✅ Dashboard web com setores separados em cards
+- ✅ Atualização em tempo real via Socket.IO
+- ✅ Armazenamento automático em CSV
 
 ---
 
 📸 Demonstração Visual
 
-- Protótipo Físico: circuito com ESP32, LEDs e sensor
-- Dashboard: exibição Node-RED em tempo real
+- Protótipo físico: circuito com ESP32, LEDs, HC-SR04 e DHT22
+- Dashboard: exibição em tempo real com setores separados e monitoramento do ambiente
 
 ---
 
 🚀 Resultados Parciais
 
-- MVP funcional entregue com sensor ativo e dashboard operando
-- Código escalável para múltiplos sensores e visão computacional futura
-- Comunicação robusta via MQTT
-- Testado com simulação e execução local
+- MVP funcional com sensores ativos e dashboard operando
+- Comunicação confiável via MQTT
+- Dados armazenados em tempo real em CSV
+- Código escalável para integração com múltiplos sensores ou visão computacional
 
 ---
 
@@ -96,4 +106,5 @@ MotoPatio/
 
 - Eduardo Miguel Forato Monteiro -RM55871
 - Cicero Gabriel Oliveira Serafim -RM556996
+- Murillo Sant'Anna - RM557183
 - FIAP – 2025 | Disruptive Architectures
