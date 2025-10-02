@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Pátio Motos</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      background: #f0f4f8; 
+      margin: 0; 
+      padding: 0; 
+      text-align: center;
+    }
+    h1 { 
+      margin: 20px 0; 
+      color: #333; 
+    }
+    .card {
+      background: white; 
+      padding: 20px; 
+      margin: 20px auto; 
+      width: 90%; 
+      max-width: 600px;
+      border-radius: 12px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .valor { 
+      font-size: 22px; 
+      font-weight: bold; 
+      margin: 10px 0; 
+    }
+    .setores-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 15px;
+      margin-top: 15px;
+    }
+    .setor-card {
+      background: #fff; 
+      border-radius: 10px; 
+      padding: 15px; 
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .setor-card h3 {
+      margin: 0;
+      font-size: 18px;
+      color: #444;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 15px;
+    }
+    .quantidade {
+      margin-top: 5px;
+      font-size: 14px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Dashboard Pátio de Motos</h1>
+
+  <!-- Ambiente -->
+  <div class="card">
+    <h2>🌡 Ambiente</h2>
+    <div id="temp" class="valor">-- °C</div>
+    <div id="umid" class="valor">-- %</div>
+  </div>
+
+  <!-- Setores -->
+  <div class="card">
+    <h2>🚦 Status dos Setores</h2>
+    <div id="setores" class="setores-container"></div>
+  </div>
+
+  <script>
+    // Conectar no HiveMQ WebSocket
+    const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+
+    client.on("connect", () => {
+      console.log("✅ Conectado ao HiveMQ!");
+      client.subscribe("patio/ambiente/dht22");
+      client.subscribe("patio/setor/+/contagem");
+    });
+
+    // Armazena estados dos setores
+    const setoresData = {};
+
+    client.on("message", (topic, message) => {
+      let data = {};
+      try { data = JSON.parse(message.toString()); } catch {}
+
+      if (topic === "patio/ambiente/dht22") {
+        document.getElementById("temp").innerText = data.temperatura + " °C";
+        document.getElementById("umid").innerText = data.umidade + " %";
+      }
+
+      if (topic.includes("patio/setor/")) {
+        setoresData[data.setor] = data;
+        atualizarSetores();
+      }
+    });
+
+    function atualizarSetores() {
+      let div = document.getElementById("setores");
+      div.innerHTML = "";
+
+      Object.keys(setoresData).sort().forEach(setor => {
+        let info = setoresData[setor];
+        div.innerHTML += `
+          <div class="setor-card">
+            <h3>Setor ${info.setor}</h3>
+            <div class="status">📌 ${info.status}</div>
+            <div class="quantidade">📊 Quantidade: ${info.quantidade}</div>
+          </div>
+        `;
+      });
+    }
+  </script>
+</body>
+</html>
