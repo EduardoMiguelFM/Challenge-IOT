@@ -1,4 +1,4 @@
-🏍️ MotoPátio Inteligente – Projeto IoT (FIAP Sprint 1)
+🏍️ MotoPátio Inteligente – Projeto IoT (FIAP Sprint 3)
 
 > Solução baseada em IoT para organizar o controle de motos em pátios logísticos, como os utilizados pela empresa Mottu.
 
