@@ -134,7 +134,7 @@ void loop() {
       case 0: contagem[i]++; acenderLedSomente(i); publicarSetor(i); break;
       case 1:
         Serial.println("ALERTA: Moto desaparecida no setor " + String(setores[i]));
-        for(int j=0; j<2; j++){ // reduzi de 3 piscadas para 2
+        for(int j=0; j<2; j++){ 
           digitalWrite(leds[i], HIGH); delay(150);
           digitalWrite(leds[i], LOW); delay(150);
         }
@@ -148,5 +148,5 @@ void loop() {
     }
   }
 
-  delay(700); // delay menor (era 1000ms)
+  delay(700);
 }
