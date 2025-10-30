@@ -12,6 +12,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
     "csv-writer": "^1.6.0",
     "express": "^5.1.0",
     "mqtt": "^5.14.1",

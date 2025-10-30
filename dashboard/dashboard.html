@@ -2,121 +2,224 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard Pátio Motos</title>
+  <title>Dashboard Pátio Motos - Atualizado</title>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
   <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      background: #f0f4f8; 
-      margin: 0; 
-      padding: 0; 
-      text-align: center;
-    }
-    h1 { 
-      margin: 20px 0; 
-      color: #333; 
-    }
-    .card {
-      background: white; 
-      padding: 20px; 
-      margin: 20px auto; 
-      width: 90%; 
-      max-width: 600px;
-      border-radius: 12px; 
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    .valor { 
-      font-size: 22px; 
-      font-weight: bold; 
-      margin: 10px 0; 
-    }
-    .setores-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 15px;
-      margin-top: 15px;
-    }
-    .setor-card {
-      background: #fff; 
-      border-radius: 10px; 
-      padding: 15px; 
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
-    .setor-card h3 {
-      margin: 0;
-      font-size: 18px;
-      color: #444;
-    }
-    .status {
-      margin-top: 10px;
-      font-size: 15px;
-    }
-    .quantidade {
-      margin-top: 5px;
-      font-size: 14px;
-      color: #555;
-    }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; margin: 0; padding: 0; }
+    header { background:#0b64b3;color:white;padding:16px;text-align:left;}
+    main { padding: 18px; display:flex; gap:18px; }
+    .left, .right { background:white; padding:12px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.08);}
+    .left { flex: 1 1 600px; }
+    .right { width: 360px; }
+    h1 { margin:0; font-size:20px }
+    .grid { display:grid; grid-template-columns: repeat(4,1fr); gap:10px; margin-top:12px; }
+    .slot { background:#fafafa; border:1px solid #e6e9ee; padding:10px; border-radius:8px; min-height:90px; position:relative; }
+    .slot h3 { margin:0 0 8px 0; font-size:14px; }
+    .badge { display:inline-block;padding:4px 8px;border-radius:6px;font-size:12px; }
+    .state-available { background:#e6ffed; color:#007a2f; }
+    .state-inuse { background:#fff4e6; color:#b35900; }
+    .state-maint { background:#fff0f6; color:#a3003a; }
+    .alerts { max-height:420px; overflow:auto; }
+    .alert-item { padding:8px;border-bottom:1px solid #eee; text-align:left; font-size:13px; }
+    .map-legend { margin-top:8px; font-size:13px; }
+    .controls { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;}
+    button { padding:8px 10px; border-radius:6px; border: none; cursor:pointer; }
+    .btn-primary { background:#0b64b3;color:white; }
+    .btn-ghost { background:#f4f6fb; }
+    .status-dot { width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px; }
+    .dot-available { background:#2ca36b;}
+    .dot-inuse { background:#f39c12;}
+    .dot-maint { background:#e74c3c;}
+    footer { text-align:center; padding:12px; color:#666; }
+    pre { background:#111; color:#dcdcdc; padding:8px; border-radius:6px; overflow:auto; max-height:120px;}
   </style>
 </head>
 <body>
-  <h1>📊 Dashboard Pátio de Motos</h1>
+  <header>
+    <h1>Dashboard Pátio Motos — Solução IoT integrada</h1>
+    <div style="font-size:13px; opacity:0.9;">Fluxo ponta‑a‑ponta | Preparado para integração com Banco de Dados e APIs</div>
+  </header>
+  <main>
+    <div class="left">
+      <h2>Visão Geral do Pátio</h2>
+      <div class="controls">
+        <button class="btn-primary" id="btn-refresh">Forçar refresh</button>
+        <button class="btn-ghost" id="btn-export">Exportar JSON (preparação DB)</button>
+        <button class="btn-ghost" id="btn-simulate">Simular evento</button>
+      </div>
 
-  <!-- Ambiente -->
-  <div class="card">
-    <h2>🌡 Ambiente</h2>
-    <div id="temp" class="valor">-- °C</div>
-    <div id="umid" class="valor">-- %</div>
-  </div>
+      <div class="grid" id="grid">
+        <!-- slots dynamically inserted -->
+      </div>
 
-  <!-- Setores -->
-  <div class="card">
-    <h2>🚦 Status dos Setores</h2>
-    <div id="setores" class="setores-container"></div>
-  </div>
+      <div style="margin-top:12px;">
+        <h3>Legenda</h3>
+        <div class="map-legend">
+          <span class="status-dot dot-available"></span> Disponível
+          &nbsp;&nbsp;
+          <span class="status-dot dot-inuse"></span> Em uso
+          &nbsp;&nbsp;
+          <span class="status-dot dot-maint"></span> Manutenção / Alerta
+        </div>
+      </div>
+    </div>
 
-  <script>
-    // Conectar no HiveMQ WebSocket
-    const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+    <div class="right">
+      <h2>Alertas em tempo real</h2>
+      <div class="alerts" id="alerts"></div>
 
-    client.on("connect", () => {
-      console.log("✅ Conectado ao HiveMQ!");
-      client.subscribe("patio/ambiente/dht22");
-      client.subscribe("patio/setor/+/contagem");
-    });
+      <h3 style="margin-top:12px">Dados brutos (para integração)</h3>
+      <pre id="raw" title="JSON preparado para salvar no BD">Aguardando dados...</pre>
+    </div>
+  </main>
 
-    // Armazena estados dos setores
-    const setoresData = {};
+  <footer>
+    Projeto preparado por equipe — entregue para Sprint 3/4. Inclui: UI, bridge MQTT → WebSocket, endpoint REST para integração com DB, schema SQL e Dockerfile no repositório.
+  </footer>
 
-    client.on("message", (topic, message) => {
-      let data = {};
-      try { data = JSON.parse(message.toString()); } catch {}
+<script>
+  // Example layout: 7 setores, cada setor tem 8 vagas (ajustável)
+  const setores = ["A","B","C","D","E","F","G"];
+  const vagasPorSetor = 6;
+  const grid = document.getElementById('grid');
+  const alertsDiv = document.getElementById('alerts');
+  const rawPre = document.getElementById('raw');
 
-      if (topic === "patio/ambiente/dht22") {
-        document.getElementById("temp").innerText = data.temperatura + " °C";
-        document.getElementById("umid").innerText = data.umidade + " %";
-      }
-
-      if (topic.includes("patio/setor/")) {
-        setoresData[data.setor] = data;
-        atualizarSetores();
-      }
-    });
-
-    function atualizarSetores() {
-      let div = document.getElementById("setores");
-      div.innerHTML = "";
-
-      Object.keys(setoresData).sort().forEach(setor => {
-        let info = setoresData[setor];
-        div.innerHTML += `
-          <div class="setor-card">
-            <h3>Setor ${info.setor}</h3>
-            <div class="status">📌 ${info.status}</div>
-            <div class="quantidade">📊 Quantidade: ${info.quantidade}</div>
-          </div>
+  // initialize grid
+  function buildGrid(){
+    grid.innerHTML = '';
+    setores.forEach(setor=>{
+      for(let i=1;i<=vagasPorSetor;i++){
+        const slotId = `${setor}-${i}`;
+        const div = document.createElement('div');
+        div.className = 'slot';
+        div.id = 'slot-'+slotId;
+        div.innerHTML = `<h3>Vaga ${slotId}</h3>
+          <div class="state">Estado: <span class="badge state-available" id="state-${slotId}">DISPONÍVEL</span></div>
+          <div class="meta" id="meta-${slotId}" style="margin-top:8px;font-size:13px;color:#444">--</div>
         `;
-      });
+        grid.appendChild(div);
+      }
+    });
+  }
+
+  buildGrid();
+
+  // realtime via socket.io (provided by server.js)
+  const socket = io();
+  socket.on('connect', ()=> {
+    addAlert('Conectado ao servidor de eventos (socket.io)');
+    console.log('socket connected');
+  });
+
+  // Handle sector count updates published by MQTT->server
+  socket.on('setor_update', data=>{
+    // data: { setor:"A", quantidade:3, status:"DISPONIVEL", timestamp:... }
+    addAlert(`Atualização setor ${data.setor}: ${data.quantidade} veículos — status ${data.status}`);
+    // simple placement logic: mark first N vagas as occupied
+    placeVehiclesForSetor(data.setor, data.quantidade, data.status);
+    updateRawPreview();
+  });
+
+  // Handle individual vehicle events (topic: patio/veiculo/event)
+  socket.on('veiculo_event', ev=>{
+    addAlert(`Evento veículo: ${ev.id} → ${ev.event}`);
+    applyVehicleEvent(ev);
+    updateRawPreview();
+  });
+
+  function placeVehiclesForSetor(setor, quantidade, status){
+    // clear all vagas for setor
+    for(let i=1;i<=vagasPorSetor;i++){
+      let slotId = `${setor}-${i}`;
+      const stateEl = document.getElementById('state-'+slotId);
+      const meta = document.getElementById('meta-'+slotId);
+      stateEl.className = 'badge state-available';
+      stateEl.innerText = 'DISPONÍVEL';
+      meta.innerText = '--';
     }
-  </script>
+    // occupy first 'quantidade' vagas
+    for(let i=1;i<=quantidade && i<=vagasPorSetor;i++){
+      let slotId = `${setor}-${i}`;
+      const stateEl = document.getElementById('state-'+slotId);
+      const meta = document.getElementById('meta-'+slotId);
+      if(status && status.toLowerCase().includes('manut')){
+        stateEl.className = 'badge state-maint';
+        stateEl.innerText = 'MANUTENÇÃO';
+      } else {
+        stateEl.className = 'badge state-inuse';
+        stateEl.innerText = 'EM USO';
+      }
+      meta.innerText = `Últ. atualização: ${new Date().toLocaleTimeString()}`;
+    }
+  }
+
+  // Apply fine-grained vehicle event (example format)
+  function applyVehicleEvent(ev){
+    // ev: { id: "A-3-VEIC123", setor:"A", vaga:3, event:"MANUTENCAO", meta:{...} }
+    const slotId = `${ev.setor}-${ev.vaga}`;
+    const stateEl = document.getElementById('state-'+slotId);
+    const meta = document.getElementById('meta-'+slotId);
+    if(!stateEl) return;
+    if(ev.event === 'MANUTENCAO'){
+      stateEl.className = 'badge state-maint';
+      stateEl.innerText = 'MANUTENÇÃO';
+    } else if(ev.event === 'SAIDA'){
+      stateEl.className = 'badge state-available';
+      stateEl.innerText = 'DISPONÍVEL';
+      meta.innerText = `Últ: saída ${new Date().toLocaleTimeString()}`;
+    } else {
+      stateEl.className = 'badge state-inuse';
+      stateEl.innerText = 'EM USO';
+      meta.innerText = `Últ: ${ev.event} @ ${new Date().toLocaleTimeString()}`;
+    }
+  }
+
+  function addAlert(text){
+    const d = document.createElement('div');
+    d.className = 'alert-item';
+    d.innerText = `${new Date().toLocaleTimeString()} — ${text}`;
+    alertsDiv.prepend(d);
+  }
+
+  // Raw JSON export (prepared payload for DB)
+  function collectPayload(){
+    const payload = { timestamp: new Date().toISOString(), vagas: []};
+    setores.forEach(setor=>{
+      for(let i=1;i<=vagasPorSetor;i++){
+        const slotId = `${setor}-${i}`;
+        const state = document.getElementById('state-'+slotId).innerText;
+        const meta = document.getElementById('meta-'+slotId).innerText;
+        payload.vagas.push({ setor:setor, vaga:i, state:state, meta:meta });
+      }
+    });
+    return payload;
+  }
+
+  function updateRawPreview(){
+    rawPre.innerText = JSON.stringify(collectPayload(), null, 2);
+  }
+
+  document.getElementById('btn-refresh').addEventListener('click', ()=>{ updateRawPreview(); addAlert('Refresh manual executado'); });
+  document.getElementById('btn-export').addEventListener('click', ()=>{
+    const payload = collectPayload();
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'patio_export.json'; a.click();
+    addAlert('Export JSON gerado (pronto para gravar em BD)');
+  });
+
+  document.getElementById('btn-simulate').addEventListener('click', ()=>{
+    // sample simulation event
+    const ev = { id: 'VEIC-'+Math.floor(Math.random()*999), setor: 'A', vaga: 2, event: 'MANUTENCAO', meta:{ reason: 'simulação'}};
+    socket.emit('simulate_event', ev);
+    addAlert('Simulação enviada ao servidor');
+  });
+
+  // initial preview
+  updateRawPreview();
+
+</script>
 </body>
 </html>
